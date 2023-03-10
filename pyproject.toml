@@ -5,7 +5,7 @@ description = "The video reuse detector"
 authors = ["TomasSkotare <tomas.skotare@umu.se>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "video_reuse_detector"}]
+packages = [{include = "vrd"}]
 
 [tool.poetry.dependencies]
 python = "^3.7"
