@@ -8,7 +8,11 @@ import time
 import numpy as np
 import pandas as pd
 import PIL
-from IPython.core.display import display
+try:
+    from IPython.core.display import display
+except:
+    pass
+
 from scipy.sparse import lil_matrix, triu
 from tqdm.auto import tqdm
 
