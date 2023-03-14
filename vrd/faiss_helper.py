@@ -36,9 +36,8 @@ def get_faiss_index(
     """
 
     def get_layer_value_count(x):
-        return np.asscalar(
-            np.prod([i for i in x.output_shape if i])
-        )  # TODO: Depricated asscalar
+        return np.prod([i for i in x.output_shape if i]).item()
+        
 
     if network.stop_at_layer is None:
         layer_size = get_layer_value_count(network.used_model.layers[network.default_layer])
@@ -80,9 +79,7 @@ def get_faiss_index_fpq(
     """
 
     def get_layer_value_count(x):
-        return np.asscalar(
-            np.prod([i for i in x.output_shape if i])
-        )  # TODO: Depricated asscalar
+        return np.prod([i for i in x.output_shape if i]).item()
 
     layer_size = get_layer_value_count(network.used_model.layers[network.default_layer])
     # m = 8                             # number of subquantizers
