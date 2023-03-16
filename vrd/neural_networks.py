@@ -4,31 +4,21 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Any
 
-
-from tensorflow.keras.applications import (
-    vgg16,
-    resnet50,
-    mobilenet,
-    inception_v3,
-    EfficientNetB4,
-)
+from tensorflow import keras
+from keras.applications import EfficientNetB4
 
 
 class NeuralNetworks(Enum):
     """Enum for the different Neural Networks available"""
 
-    vgg16 = 1
-    resnet50 = 2
-    mobilenet = 3
-    inception_v3 = 4
-    efficientnetb4 = 5
+    efficientnetb4 = 0
 
 
 @dataclass
 class Network:
     """Specifics on the netowork used.
     This includes:
-        * Used network and model (e.g. VGG16 with imagenet weights)
+        * Used network and model 
         * Target size of images before prediction (Can be changed to some degree)
         * Which layer should be extracted  (Can be changed). This can be either by name, or index.
             If name is used, index will be ignored and will not be considered.
@@ -41,7 +31,7 @@ class Network:
     used_model: Any
     target_size: tuple
     default_layer: int
-    stop_at_layer: str = None 
+    stop_at_layer: str = None
 
     def __str__(self):
         return f"Neural network used: {self.used_network}\nModel used:{self.used_model}\nInput size: {self.target_size}\nLayer used: {self.default_layer}\nStop at layer: {self.stop_at_layer}"
@@ -60,43 +50,6 @@ def get_network(network: NeuralNetworks) -> Network:
         Network: A Network class describing the desired network
     """
 
-    if network is NeuralNetworks.inception_v3:
-        return Network(
-            network_enum=network,
-            used_network=inception_v3,
-            used_model=inception_v3.InceptionV3(weights="imagenet"),
-            target_size=(299, 299),
-            default_layer=100,
-            stop_at_layer = None
-        )  
-
-    if network is NeuralNetworks.resnet50:
-        return Network(
-            network_enum=network,
-            used_network=resnet50,
-            used_model=resnet50.ResNet50(weights="imagenet"),
-            target_size=(224, 224),
-            default_layer=165,
-            stop_at_layer = None,
-        )
-    if network is NeuralNetworks.vgg16:
-        return Network(
-            network_enum=network,
-            used_network=vgg16,
-            used_model=vgg16.VGG16(weights="imagenet"),
-            target_size=(224, 224),
-            default_layer=100,
-            stop_at_layer = None,
-        )
-    if network is NeuralNetworks.mobilenet:
-        return Network(
-            network_enum=network,
-            used_network=mobilenet,
-            used_model=mobilenet.MobileNet(weights="imagenet"),
-            target_size=(224, 224),
-            default_layer=86,
-            stop_at_layer = None,
-        )
     if network is NeuralNetworks.efficientnetb4:
         return Network(
             network_enum=network,
@@ -104,6 +57,6 @@ def get_network(network: NeuralNetworks) -> Network:
             used_model=EfficientNetB4(weights="imagenet"),
             target_size=(380, 380),
             default_layer=463,
-            stop_at_layer = 'block7b_se_squeeze'
+            stop_at_layer="block7b_se_squeeze",
         )
     raise Exception("No such network type!")  # Add valid exception

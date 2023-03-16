@@ -7,8 +7,9 @@ from PIL import Image as PILImage
 # This import is to fix the dynamically loading libraries of TF to work with VS Code Pylance
 import tensorflow as tf
 
+# workaround, see https://stackoverflow.com/questions/58202095/cant-import-tensorflow-keras-in-vs-code
 keras = tf.keras
-from tensorflow.keras.utils import img_to_array, load_img
+from keras.utils import img_to_array, load_img
 from wand.image import Image
 
 from .neural_networks import Network

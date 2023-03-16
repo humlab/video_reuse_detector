@@ -8,8 +8,9 @@ import time
 import numpy as np
 import pandas as pd
 import PIL
+
 try:
-    from IPython.core.display import display
+    from IPython.display import display
 except:
     pass
 
@@ -277,8 +278,6 @@ class SequenceFinder:
         print(f"Merged from {len(sequences)} to {len(new_sequence)} sequences")
         return new_sequence
 
-
-
     def get_sequence_dataframe(self, sequences: list) -> pd.DataFrame:
         """Creates a Pandas dataframe with all sequences.
         This includes:
@@ -304,8 +303,10 @@ class SequenceFinder:
             v2, v2_start = self.neigh.frames.get_video_and_start_time_from_index(start2)
 
             time_str = lambda x: time.strftime("%H:%M:%S", time.gmtime(x))
-            
-            dist_mean, dist_zeros = self.get_sequence_mean_distance(start1, start2, duration)
+
+            dist_mean, dist_zeros = self.get_sequence_mean_distance(
+                start1, start2, duration
+            )
 
             df_list.append(
                 {
@@ -323,14 +324,15 @@ class SequenceFinder:
                 }
             )
         return pd.DataFrame(df_list)
-    
+
     @staticmethod
     def dataframe_to_sequence(df: pd.DataFrame) -> list:
         new_seq = []
-        for id, row in df.to_dict('index').items():
-            new_seq.append((row['Index Video 1'], row['Index Video 2'], row['Duration']))
+        for id, row in df.to_dict("index").items():
+            new_seq.append(
+                (row["Index Video 1"], row["Index Video 2"], row["Duration"])
+            )
         return new_seq
-    
 
     def show_notebook_sequence(
         self,
@@ -348,6 +350,7 @@ class SequenceFinder:
             show_shift (bool, optional): Show statistics for "shifting", i.e. moving the matches one or 
                 several seconds forward or backwards.
             frame_resize (tuple, optional): Size of the thumbnails of each frame
+            sort_order (callable): A handler that can sort or filter the sequence list.
         """
         frames = self.neigh.frames
 
@@ -358,7 +361,7 @@ class SequenceFinder:
             sequences = sort_order(sequences)
 
         time_str = lambda x: time.strftime("%H:%M:%S", time.gmtime(x))
-        for start1, start2, duration in sequences[:show_limit]:
+        for idx, (start1, start2, duration) in enumerate(sequences[:show_limit]):
             v1, v1_start = frames.get_video_and_start_time_from_index(start1)
             v2, v2_start = frames.get_video_and_start_time_from_index(start2)
 
@@ -391,7 +394,9 @@ class SequenceFinder:
                     "# not matching": dist_zeros,
                 },
             ]
-            display(pd.DataFrame(pd_data).set_index("Video"))
+            df = pd.DataFrame(pd_data).set_index("Video")
+            df = df.style.set_caption(f"Sequence no. {idx}:")
+            display(df)
 
             display(
                 self.show_sequence(

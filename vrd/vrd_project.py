@@ -148,7 +148,9 @@ class VRDProject:
         model = self.get_model_instance()
         stop_layer = model.stop_at_layer
         if stop_layer is not None:
-            print(f'Layer specified ({stop_layer}), model index ({model.default_layer}) will be ignored.')
+            print(
+                f"Layer specified ({stop_layer}), model index ({model.default_layer}) will be ignored."
+            )
 
         klh.add_layer_activations_to_database(
             model, self.database_file, self.frame_extractor

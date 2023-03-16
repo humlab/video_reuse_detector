@@ -104,13 +104,12 @@ def get_layer_info(network: nn.Network):
 
     model = network.used_model
 
-
     layer_info = []
 
     def _get_output_size(output_shape):
         if shape is None:
             return 0
-        return np.prod([x for x in output_shape if x is not None]) 
+        return np.prod([x for x in output_shape if x is not None])
 
     for idx, layer in enumerate(model.layers):
         shape = layer.output_shape
@@ -121,10 +120,12 @@ def get_layer_info(network: nn.Network):
                 shape = shape[0]
         # pprint(shape)
         layer_info.append(
-            {'Index':idx,
-            'Name':layer.name,
-            'Output size':shape,
-            'Output element count':_get_output_size(shape)
-            })
-    
+            {
+                "Index": idx,
+                "Name": layer.name,
+                "Output size": shape,
+                "Output element count": _get_output_size(shape),
+            }
+        )
+
     return layer_info
