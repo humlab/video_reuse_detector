@@ -11,8 +11,11 @@ import PIL
 
 try:
     from IPython.display import display
+    from IPython.display import Image as ipy_image
 except:
     pass
+
+from io import BytesIO
 
 from scipy.sparse import lil_matrix, triu
 from tqdm.auto import tqdm
@@ -341,6 +344,8 @@ class SequenceFinder:
         show_shift=False,
         frame_resize=(30, 30),
         sort_order: callable = None,
+        convert_format=None,
+        pandas_background=None,
     ):
         """Displays longest-to-shortest sequences in a notebook
 
@@ -351,6 +356,8 @@ class SequenceFinder:
                 several seconds forward or backwards.
             frame_resize (tuple, optional): Size of the thumbnails of each frame
             sort_order (callable): A handler that can sort or filter the sequence list.
+            convert_format: The image format to return, for example "jpeg" to save space.
+            pandas_background: Override background color of pandas to this value
         """
         frames = self.neigh.frames
 
@@ -396,13 +403,25 @@ class SequenceFinder:
             ]
             df = pd.DataFrame(pd_data).set_index("Video")
             df = df.style.set_caption(f"Sequence no. {idx}:")
+            if pandas_background:
+                headers = {
+                    "selector": "tr:not(.col_trim)",
+                    "props": f"background-color: {pandas_background};",
+                }
+                df = df.set_properties(**{"background-color": pandas_background})
+                df = df.set_table_styles([headers])
             display(df)
 
-            display(
-                self.show_sequence(
-                    start1, start2, duration, frames, frame_resize=frame_resize
-                )
+            img = self.show_sequence(
+                start1, start2, duration, frames, frame_resize=frame_resize
             )
+            if convert_format:
+                img_bytes = BytesIO()
+                img.save(img_bytes, format=convert_format)
+                to_show = ipy_image(img_bytes.getvalue())
+            else:
+                to_show = img
+            display(to_show)
 
     def get_sequence_mean_distance(self, start1, start2, duration):
         res_arr = np.zeros(duration, dtype=np.float32)
@@ -482,8 +501,10 @@ class SequenceFinder:
         start1: int,
         start2: int,
         duration: int,
-        frames: frame_extractor.FrameExtractor,
-        frame_resize=(200, 200),
+        frames,
+        frame_resize=(70, 70),
+        row_max_width=700,
+        row_spacing=10,
     ):
         """Generates a comparison image for a given sequence
 
@@ -493,20 +514,48 @@ class SequenceFinder:
             duration (int): _description_
             frames (FrameExtractor): _description_
             frame_resize (tuple, optional): Size of each resulting image in the sequence. Defaults to (200, 200).
+            row_max_width: The maximum number of pixels allowed for one row. If this value is exceeded 
+                (i.e. width * # frames), the rows are broken up into several rows
+            row_spacing: The number of pixels between each row (if any)
 
         Returns:
             A PIL image with the whole sequence
         """
 
         images = frames.all_images
+        width, height = frame_resize
+        max_width = width * duration
+        if max_width > row_max_width:
+            per_row = np.floor(row_max_width / width).astype(int)
+            no_rows = np.ceil(duration / per_row).astype(int)
+            print(per_row)
+            print(no_rows)
+        else:
+            per_row = duration
+            no_rows = 1
 
         merged = PIL.Image.new(
-            "RGB", (frame_resize[0] * duration, frame_resize[1] * 2), (250, 250, 250)
+            "RGB",
+            (height * per_row, height * 2 * no_rows + row_spacing * no_rows),
+            (250, 250, 250),
         )
 
         for i in range(0, duration):
             img1 = PIL.Image.open(images[start1 + i]).resize(frame_resize)
             img2 = PIL.Image.open(images[start2 + i]).resize(frame_resize)
-            merged.paste(img1, (frame_resize[0] * i, 0))
-            merged.paste(img2, (frame_resize[0] * i, frame_resize[1]))
+            row_multiplier = np.floor(i / per_row).astype(int) * 2
+            merged.paste(
+                img1,
+                (
+                    height * (i % per_row),
+                    row_multiplier * row_spacing + row_multiplier * height,
+                ),
+            )
+            merged.paste(
+                img2,
+                (
+                    height * (i % per_row),
+                    row_multiplier * row_spacing + height + row_multiplier * height,
+                ),
+            )
         return merged
