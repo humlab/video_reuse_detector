@@ -8,6 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 import PIL
+from PIL import ImageDraw
 
 try:
     from IPython.display import display
@@ -22,7 +23,7 @@ from tqdm.auto import tqdm
 
 from vrd.vrd_project import VRDProject
 
-from . import frame_extractor, neighbours
+from . import neighbours
 
 sys.path.append("..")
 
@@ -34,16 +35,19 @@ class SequenceFinder:
     shortest_allowed_sequence: int
     max_distance: int
     neigh: neighbours.Neighbours
+    pandas_background: str
 
     def __init__(
         self,
         neigh: neighbours.Neighbours,
         max_distance=30000,
         shortest_allowed_sequence=3,
+        pandas_background=None,
     ) -> None:
         self.neigh = neigh
         self.max_distance = max_distance
         self.shortest_allowed_sequence = shortest_allowed_sequence
+        self.pandas_background = pandas_background
 
         matrix = self._calculate_sequence_matrix(max_distance=max_distance)
         # Make upper triangular
@@ -360,6 +364,8 @@ class SequenceFinder:
             pandas_background: Override background color of pandas to this value
         """
         frames = self.neigh.frames
+        if pandas_background is None:
+            pandas_background = self.pandas_background
 
         if sort_order is None:
             # Default: Sort by duration
@@ -417,7 +423,14 @@ class SequenceFinder:
             )
             if convert_format:
                 img_bytes = BytesIO()
-                img.save(img_bytes, format=convert_format)
+                try:
+                    img.save(img_bytes, format=convert_format)
+                except Exception as e: # This should be OSError only, but that didn't work
+                    # Likely can't handle transparency, try again
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGB")
+                    img.save(img_bytes, format=convert_format)
+
                 to_show = ipy_image(img_bytes.getvalue())
             else:
                 to_show = img
@@ -449,11 +462,6 @@ class SequenceFinder:
             )
         df = pd.DataFrame(shift_results).set_index("Shift")
         display(df)
-        # if minimize_nonmatch:
-        #     df = df[df.Zeros == df.Zeros.min()]
-        #     if len(df > 1):
-        #         df = df[df.Mean == df.Mean.min()]
-        #     start1 -= df.reset_index().Shift.values[0]
 
     @staticmethod
     def remove_unwanted_sequences(sequences, project: VRDProject, excel_file: str):
@@ -502,9 +510,10 @@ class SequenceFinder:
         start2: int,
         duration: int,
         frames,
-        frame_resize=(70, 70),
+        frame_resize=(90, 70),
         row_max_width=700,
         row_spacing=10,
+        background_opacity=0,
     ):
         """Generates a comparison image for a given sequence
 
@@ -517,6 +526,7 @@ class SequenceFinder:
             row_max_width: The maximum number of pixels allowed for one row. If this value is exceeded 
                 (i.e. width * # frames), the rows are broken up into several rows
             row_spacing: The number of pixels between each row (if any)
+            background_opacity: The opacity of the unused pixels (if any)
 
         Returns:
             A PIL image with the whole sequence
@@ -528,34 +538,41 @@ class SequenceFinder:
         if max_width > row_max_width:
             per_row = np.floor(row_max_width / width).astype(int)
             no_rows = np.ceil(duration / per_row).astype(int)
-            print(per_row)
-            print(no_rows)
         else:
             per_row = duration
             no_rows = 1
+        row_spacing_pixels = row_spacing * (no_rows - 1)
 
         merged = PIL.Image.new(
-            "RGB",
-            (height * per_row, height * 2 * no_rows + row_spacing * no_rows),
-            (250, 250, 250),
+            "RGBA",
+            (width * per_row, height * 2 * no_rows + row_spacing_pixels),
+            (250, 250, 250, background_opacity),
         )
-
+        draw = ImageDraw.Draw(merged)
         for i in range(0, duration):
             img1 = PIL.Image.open(images[start1 + i]).resize(frame_resize)
             img2 = PIL.Image.open(images[start2 + i]).resize(frame_resize)
-            row_multiplier = np.floor(i / per_row).astype(int) * 2
+            current_row = np.floor(i / per_row).astype(int)
+            image_column = i % per_row
             merged.paste(
                 img1,
                 (
-                    height * (i % per_row),
-                    row_multiplier * row_spacing + row_multiplier * height,
+                    width * image_column,
+                    current_row * row_spacing + current_row * 2 * height,
                 ),
             )
             merged.paste(
                 img2,
                 (
-                    height * (i % per_row),
-                    row_multiplier * row_spacing + height + row_multiplier * height,
+                    width * image_column,
+                    current_row * row_spacing + current_row * 2 * height + height,
                 ),
             )
+            if i > 0 and image_column == 0:
+                y_loc = current_row * height * 2 + (current_row - 1) * row_spacing
+                draw.text(
+                    (10, y_loc),
+                    f"Frames {i+1}-{i + np.min([duration-i, per_row])}",
+                    fill=(0, 0, 0),
+                )
         return merged
