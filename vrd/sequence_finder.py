@@ -36,6 +36,8 @@ class SequenceFinder:
     max_distance: int
     neigh: neighbours.Neighbours
     pandas_background: str
+    image_max_width: int
+    add_frame_numbering: bool
 
     def __init__(
         self,
@@ -43,11 +45,15 @@ class SequenceFinder:
         max_distance=30000,
         shortest_allowed_sequence=3,
         pandas_background=None,
+        image_max_width=None,
+        image_frame_text=False
     ) -> None:
         self.neigh = neigh
         self.max_distance = max_distance
         self.shortest_allowed_sequence = shortest_allowed_sequence
         self.pandas_background = pandas_background
+        self.image_max_width = image_max_width
+        self.add_frame_numbering = image_frame_text
 
         matrix = self._calculate_sequence_matrix(max_distance=max_distance)
         # Make upper triangular
@@ -350,6 +356,8 @@ class SequenceFinder:
         sort_order: callable = None,
         convert_format=None,
         pandas_background=None,
+        image_max_width: int = None,
+        add_frame_numbering: bool = None
     ):
         """Displays longest-to-shortest sequences in a notebook
 
@@ -362,10 +370,18 @@ class SequenceFinder:
             sort_order (callable): A handler that can sort or filter the sequence list.
             convert_format: The image format to return, for example "jpeg" to save space.
             pandas_background: Override background color of pandas to this value
+            image_max_width (int): If not none, wraps longer sequences into multiple rows according this threshold
+                of maximum width 
+            add_frame_numbering (bool): Whether to add text describing the frame # or not when wrapping
         """
         frames = self.neigh.frames
         if pandas_background is None:
             pandas_background = self.pandas_background
+        if image_max_width is None:
+            image_max_width = self.image_max_width
+        if add_frame_numbering is None:
+            add_frame_numbering = self.add_frame_numbering
+                
 
         if sort_order is None:
             # Default: Sort by duration
@@ -419,7 +435,7 @@ class SequenceFinder:
             display(df)
 
             img = self.show_sequence(
-                start1, start2, duration, frames, frame_resize=frame_resize
+                start1, start2, duration, frames, frame_resize=frame_resize, row_max_width=image_max_width, add_frame_numbering=add_frame_numbering
             )
             if convert_format:
                 img_bytes = BytesIO()
@@ -514,6 +530,7 @@ class SequenceFinder:
         row_max_width=700,
         row_spacing=10,
         background_opacity=0,
+        add_frame_numbering=False
     ):
         """Generates a comparison image for a given sequence
 
@@ -527,6 +544,7 @@ class SequenceFinder:
                 (i.e. width * # frames), the rows are broken up into several rows
             row_spacing: The number of pixels between each row (if any)
             background_opacity: The opacity of the unused pixels (if any)
+            add_frame_numbering: If true, adds a text in the row spacing describing which frames are shown
 
         Returns:
             A PIL image with the whole sequence
@@ -535,7 +553,7 @@ class SequenceFinder:
         images = frames.all_images
         width, height = frame_resize
         max_width = width * duration
-        if max_width > row_max_width:
+        if row_max_width is not None and max_width > row_max_width:
             per_row = np.floor(row_max_width / width).astype(int)
             no_rows = np.ceil(duration / per_row).astype(int)
         else:
@@ -568,7 +586,7 @@ class SequenceFinder:
                     current_row * row_spacing + current_row * 2 * height + height,
                 ),
             )
-            if i > 0 and image_column == 0:
+            if add_frame_numbering and i > 0 and image_column == 0:
                 y_loc = current_row * height * 2 + (current_row - 1) * row_spacing
                 draw.text(
                     (10, y_loc),
