@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "video-reuse-detector"
-version = "0.1.3"
+version = "0.1.4"
 description = "The video reuse detector"
 authors = ["TomasSkotare <tomas.skotare@umu.se>"]
 license = "MIT"
